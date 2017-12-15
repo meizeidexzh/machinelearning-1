@@ -39,7 +39,7 @@ class LearningAgent(Agent):
         # Update epsilon using a decay function of your choice
         # Update additional class parameters as needed
         # If 'testing' is True, set epsilon and alpha to 0
-        self.epsilon = self.epsilon - 0.01
+        self.epsilon = self.epsilon - 0.002
         if testing == True:
             self.epsilon = 0
             self.alpha = 0
@@ -112,11 +112,14 @@ class LearningAgent(Agent):
         # When not learning, choose a random action
         # When learning, choose a random action with 'epsilon' probability
         #   Otherwise, choose an action with the highest Q-value for the current state
-        if self.learning == True:
-            #action = self.valid_actions[random(self.epsilon)]
+        if self.learning == False:
             action = random.choice(self.valid_actions)
         else:
-            action = max(self.Q[state],key=self.Q[state].get)
+            if random.Random() < self.epsilon:
+                print 'random action:',action
+                action = random.choice(self.valid_actions)
+            else:
+                action = max(self.Q[state],key=self.Q[state].get)
         #print self.learning,self.Q[state],action
         return action
 
@@ -132,9 +135,8 @@ class LearningAgent(Agent):
         # When learning, implement the value iteration update rule
         #   Use only the learning rate 'alpha' (do not use the discount factor 'gamma')
         s = self.Q[state]
-        print "prev",s
-        s[action]=s[action] + reward + self.alpha * self.get_maxQ(state)
-        print "last",s,reward,self.get_maxQ(state)
+        s[action]=(1 - self.alpha) * s[action] + self.alpha * (reward + self.get_maxQ(state))
+
         return
 
 
@@ -192,7 +194,7 @@ def run():
     # Flags:
     #   tolerance  - epsilon tolerance before beginning testing, default is 0.05
     #   n_test     - discrete number of testing trials to perform, default is 0
-    sim.run(tolerance=0.01,n_test=10)
+    sim.run(tolerance=0.002,n_test=10)
 
 
 if __name__ == '__main__':
