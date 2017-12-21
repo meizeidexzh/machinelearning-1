@@ -123,7 +123,7 @@ class LearningAgent(Agent):
         if self.learning == False:
             action = random.choice(self.valid_actions)
         else:
-            if random.random() < self.epsilon and self.epsilon > 0.01:
+            if random.random() < self.epsilon:
                 action = random.choice(self.valid_actions)
             else:
                 #action = max(self.Q[state],key=self.Q[state].get)
