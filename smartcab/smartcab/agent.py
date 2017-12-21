@@ -147,11 +147,7 @@ class LearningAgent(Agent):
         ###########
         # When learning, implement the value iteration update rule
         #   Use only the learning rate 'alpha' (do not use the discount factor 'gamma')
-        #next_inputs = self.env.sense(self)
-        #next_waypoint = self.planner.next_waypoint()
-        #next_state = (next_waypoint,next_inputs['light'],next_inputs['oncoming'],next_inputs['left'],next_inputs['right'])
-        #self.createQ(next_state)
-        #self.Q[state][action]=(1 - self.alpha) *self.Q[state][action] + self.alpha * (reward + self.get_maxQ(next_state))
+        #self.Q[state][action]=(1 - self.alpha) *self.Q[state][action] + self.alpha * (reward + self.get_maxQ(state))
         self.Q[state][action]=(1 - self.alpha) *self.Q[state][action] + self.alpha * reward
         return
 
