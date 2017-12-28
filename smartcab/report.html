@@ -13091,7 +13091,8 @@ TkSuQmCC
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p><strong>回答：</strong>light的状态有2种，left有4种，right有4种，oncoming有4种，waypoint有3种，状态空间的大小为2<em>4</em>4<em>4</em>3=384,每种状态都训练一次需要384次训练。</p>
+<p><strong>回答：</strong>light的状态有2种，left有4种，right有4种，oncoming有4种，waypoint有3种，状态空间的大小为2<em>4</em>4<em>4</em>3=384</p>
+<p>如果每种状态都训练一次，理论上最大训练数为384次，但如果状态很多的情况下不可能每种状态都训练，而且有些状态如红灯只需要训练几次就行，因此合理的训练数量应该大于192次，小于384次。</p>
 
 </div>
 </div>
@@ -16238,7 +16239,7 @@ AZaZmZmZmVmDOMAyMzMzMzNrEAdYZmZmZmZmDeIAy8zMzMzMrEEcYJmZmZmZmTWIAywzMzMzM7MG
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p><strong>回答：</strong> 
-最优策率是智能车能根据前进的方向及路口交通灯信号及前方左右其他车辆的方向选择一个正确的动作，优先保证不违反交通规则，在这个前提下如果根据实际情况选择一个次优的策略，也是允许的，可以给予适当的奖励。其余情况都不给奖励或负的奖励。</p>
+最优策率是智能车能根据前进的方向及路口交通灯信号及前方左右其他车辆的方向选择一个正确的动作，优先保证不违反交通规则，然后是尽可能快的到达目的地。</p>
 <ul>
 <li>最优策略：
 直行遇到红灯：停止</li>
