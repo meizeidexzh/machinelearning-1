@@ -18,6 +18,6 @@ flags.DEFINE_integer('img_c', 3, 'The number of channels.')
 np.random.seed(42)
 
 ## Path
-data_dir = os.path.abspath('./epochs')
+data_dir = os.path.abspath('../epochs')
 out_dir = os.path.abspath('./output')
 model_dir = os.path.abspath('./models')
