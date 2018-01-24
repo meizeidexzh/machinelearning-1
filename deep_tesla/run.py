@@ -40,9 +40,9 @@ for epoch_id in epoch_ids:
     print('---------- processing video for epoch {} ----------'.format(epoch_id))
     vid_path = utils.join_dir(params.data_dir, 'epoch{:0>2}_front.mkv'.format(epoch_id))
     assert os.path.isfile(vid_path)
-    frame_count = utils.frame_count(vid_path)
+    #frame_count = utils.frame_count(vid_path)
     cap = cv2.VideoCapture(vid_path)
-
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))-2
     machine_steering = []
 
     print('performing inference...')
