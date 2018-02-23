@@ -22,8 +22,8 @@ import six
 ## CV
 import cv2
 ## Video visualization
-import psycopg2
-import psycopg2.extras
+#import psycopg2
+#import psycopg2.extras
 import matplotlib.pyplot as plt
 import PIL
 from pprint import pprint
@@ -397,8 +397,8 @@ def get_model():
     """
     Check if a model already exists
     """
-    model_path = join_dir(params.model_dir, 'model.json')
-    param_path = join_dir(params.model_dir, 'model.h5')
+    model_path = join_dir(params.model_dir, 'model_.json')
+    param_path = join_dir(params.model_dir, 'model_.h5')
     
     if os.path.exists(model_path):
         ch = input('Model already exists, do you want to reuse? (y/n): ')
