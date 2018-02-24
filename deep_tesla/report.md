@@ -102,9 +102,9 @@ VGG16模型共有1亿3千万个参数，输入图形长宽不能小于48`x`48，
 
 ### 基准模型
 
-从2012年的AlexNet到2015年的Residual Net，卷积神经网络的准确率越来越高，因此我们可以模仿或直接采用一个已有的模型来训练数据。根据此项目对于图像数据的要求及资源的限制，准备采用对资源要求较小而准确率稍高的VGG16模型进行迁移学习，以达到良好的训练效果。同时还可以结合了上节提到的Nvidia关于端到端自动驾驶的模型，在卷积层使用特征提取部分使用VGG16模型的迁移学习方法，但不使用该模型的全连接层，在全连接层则使用Nvidia模型中的参数配置，同时为了加快模型训练和防止过拟合，使用丢弃率为0.5的Dropout层，具体的模型参见下图：
+从2012年的AlexNet到2015年的Residual Net，卷积神经网络的准确率越来越高，因此我们可以模仿或直接采用一个已有的模型来训练数据。根据此项目对于图像数据的要求及资源的限制，准备采用对资源要求较小而准确率稍高的VGG16模型进行迁移学习，以达到良好的训练效果。同时还可以结合了上节提到的Nvidia关于端到端自动驾驶的模型，在卷积层使用特征提取部分使用VGG16模型的迁移学习方法，但不使用该模型的全连接层，在全连接层则使用Nvidia模型中的参数配置，同时为了加快模型训练和防止过拟合，使用丢弃率为0.5的Dropout层，具体的模型示例参见下图：
 
-![](.\images\model.png)
+![](.\images\tensorboard.png)
 
 ## III. 方法
 _(大概 3-5 页）_
@@ -144,14 +144,99 @@ np.resize(img, (params.FLAGS.img_w, params.FLAGS.img_h, params.FLAGS.img_c))
 - _在运用上面所提及的技术及指标的执行过程中是否遇到了困难，是否需要作出改动来得到想要的结果？_
 - _是否有需要记录解释的代码片段(例如复杂的函数）？_
 
-### 完善
-在这一部分，你需要描述你对原有的算法和技术完善的过程。例如调整模型的参数以达到更好的结果的过程应该有所记录。你需要记录最初和最终的模型，以及过程中有代表性意义的结果。你需要考虑的问题：
-- _初始结果是否清晰记录了？_
-- _完善的过程是否清晰记录了，其中使用了什么技术？_
-- _完善过程中的结果以及最终结果是否清晰记录了？_
+在训练模型前我们需要编写模型代码，根据上面对基准模型的分析，编写了如下方法：
 
+```python
+import keras
+from keras.models import Model
+from keras.layers import Dense, Dropout, Activation, Flatten,LSTM
+from keras.layers import Input
+from keras.applications.vgg16 import VGG16
+from keras.applications.imagenet_utils import preprocess_input
+from keras.layers import Lambda
+
+def vgg16_model(input_shape):
+    inputs = Input(shape=input_shape)
+    x = Lambda(lambda x:x/255,name='Lambda')(inputs)
+    base_model = VGG16(include_top=False, weights='imagenet',input_tensor=x)
+    for layer in base_model.layers:
+        layer.trainable = False
+    
+    x = base_model.output
+    x = Flatten(name='flatten')(x)
+    x = Dense(1164, activation='relu', name='fc1')(x)
+    x = Dropout(0.5,name='fc1_dropout')(x)
+    x = Dense(100, activation='relu', name='fc2')(x)
+    x = Dropout(0.5,name='fc2_dropout')(x)
+    x = Dense(50, activation='relu', name='fc3')(x)
+    x = Dropout(0.5,name='fc3_dropout')(x)
+    x = Dense(10, activation='relu', name='fc4')(x)
+    x = Dropout(0.5,name='fc4_dropout')(x)
+    x = Dense(1,name='output')(x)
+    
+    model = Model(inputs,x)
+    return model
+```
+
+此方法返回一个以VGG16模型为基础的回归模型，便于以后训练时可以重复调用。从代码上可以看到，首先对输入数据进行了归一化，然后使用keras事先提供的VGG16模型，由于我们不适用此模型的分类处理算法，因此设置include_top=False，同时通过设置weights='imagenet'使用了模型已经训练好的权重参数，然后设置VGG16模型所有模型都不参与训练layer.trainable = False，最后就是结合了NVIDIA的模型对数据的全连接处理，为了防止过拟合，这里对每层使用了dropout。
+
+接下来是对模型进行训练，模型的损失函数采用上文提到的MSE，优化函数采用Adam，学习率设置为0.0001。
+
+```python
+adam = optimizers.Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
+model.compile(loss='mean_squared_error',optimizer=adam)
+```
+
+根据上文中数据集划分方法准备训练数据和验证数据，这里训练数据的使用有两种方式，一种是每个视频文件的数据传入模型中训练，然后分别得到训练结果；另一种是将所有训练数据合并后传入模型。本项目对这两种方式都进行了尝试，并比较效果。
+
+对模型训练的代码如下：
+
+```python
+model.fit(x_train, y_train,epochs=50,batch_size=128,validation_data=(x_valid,y_valid),shuffle=True,
+                  callbacks=[TensorBoard(log_dir='./log'),
+                             EarlyStopping(monitor='loss', patience=5, verbose=0, mode='auto'),
+                            CSVLogger(filename='./log/csv.log', separator=',', append=False)])
+```
+
+这里主要要修改的参数是训练轮次epochs，我们分别使用了20和50来训练。另外为了记录和控制训练效果，在训练方式使用了几个回调方法TensorBoard，EarlyStopping，CSVLogger。
+
+### 完善
+
+要想得的一个性能好的模型，需要通过调整数据和参数来不断尝试，这里列举几个典型的训练场景来比较不同情况下的训练效果。
+
+#### 训练1
+
+最初输入数据使用第一种方式，即每个视频文件分别训练一个模型，训练轮次epochs=50，通过TensorBoard记录的loss如下：
+
+![](./images/train0217.png)
+
+可以看到每个视频文件的损失率都不同，有的差距较大，通过训练过程中记录的损失率查看可以明显看出Loss较大的几个文件都是我们在数据可视化部分看到的转弯角度很大的文件，由此可见转弯角度差别大对模型的训练有很大的影响。通过sklearn库的r2_score方法对测试集的预测结果和实际结果计算决定系数r2=
+
+| 视频文件 | Loss     |
+| -------- | -------- |
+| 01       | 4.7      |
+| 02       | 1.6      |
+| 03       | 2.7      |
+| 04       | **20.9** |
+| 05       | **6.6**  |
+| 06       | **13.4** |
+| 07       | 2.2      |
+| 08       | **6.5**  |
+
+#### 训练2
+
+经过对输入数据进行优化，通过将所有训练数据合并的方式在统一传入模型中训练，以下是训练轮次epochs=20的情况，可以看到效果较好，Loss一直在下降最后为7左右。此模型对测试集计算r2=0.23。
+
+![](./images/train0220.png)
+
+#### 训练3
+
+同样的输入数据，将训练轮次增加到50，可以看到Loss下降到6左右，虽还有下降空间但不十分明显。而此模型对测试集计算r2=0.06，反而下降了。
+
+![](./images/train0222.png)
 
 ## IV. 结果
+
 _（大概 2-3 页）_
 
 ### 模型的评价与验证
@@ -180,7 +265,7 @@ _（大概 2-3 页）_
 
 为了查看整个测试集预测结果的实际效果，这里将预测结果与测试结果输出为线型图，其中红色为预测结果，蓝色为测试结果。可以看到预测结果与测试结果的大体趋势方向相同，但在具体数值上差别较大，这与我们训练的损失率和测试集的决定系数r2值的结果相一致。
 
-![预测结果与实际结果比较](./images/test.png)
+![预测结果与实际结果比较](./images/test0.05.png)
 
 ### 对项目的思考
 
@@ -190,8 +275,9 @@ _（大概 2-3 页）_
 
 我们的模型预测结果不够理想，还不能在真实环境中使用，一个主要原因是缺少训练数据，仅靠10个视频的训练就实现自动驾驶是不可能的，另一方面在模型设计上也还需要改善，需要从理论和实践两方面入手来优化模型。下面列出从数据和模型两方面改进措施。
 
-- 对现有数据进行数据增强，可以通过平移、反转、增加阴影等手段增加图形数量。由于我们直接采用视频录制的图像，在直路在行驶的图形差别不大，将这类视频进行删除，可以加快训练速度。同时进行数据增强，增加不同情况下图片的数量，以达到训练效果。
+- 对现有数据进行数据增强，可以通过平移、反转、增加阴影等手段增加图形数量。由于我们直接采用视频录制的图像，在直路在行驶的图形差别不大，将这类视频进行删除可以加快训练速度。同时进行数据增强，增加不同情况下图片的数量，以达到训练效果。
 - 从上面测试结果线型图上可以看到，即使在直行的道路上我们的预测结果也有很大的波动，这说明我们的模型还需要改进。一方面可以增加训练次数，达到最佳的训练效果，另一方，由于车辆行驶也是一个连续的过程，前后图像应有连续性，可以考虑在模型中增加循环时间网络RNN来达到处理连续数据的目的。
+- 另外我们的模型主要是对道路转向进行预测，但实际路况可能很复杂如：车两侧突然出现车辆，前方大量堵车等，这种情况如何处理还需要结合障碍物判断等手段来综合处理，这已经超出了本项目的范围。
 
 ### 参考文献
 
